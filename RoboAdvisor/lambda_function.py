@@ -27,6 +27,28 @@ def build_validation_result(is_valid, violated_slot, message_content):
     }
 
 
+### Data Validation Function
+
+def data_validation(age, investment_amount, intent_request):
+    if age is not None:
+        age = parse_int(age)
+        if age < 0:
+            return build_validation_result(False, "age", "You're too young to be near a computer. Please find an adult older than 0 years old")
+        elif age >= 65:
+            return build_validation_result(False, "age", "Ha! You should be retired by now! Please find someone younger than 65 years old")
+    if investment_amount is not None:
+        investment_amount = parse_int(investment_amount)
+        if investment_amount < 5000:
+            return build_validation_result(False, "age", "Are you trying to waste my time? You need more than $5000 to speak to me. Peace!")
+    return build_validation_result(True, None, None)
+
+### Portfolio Recommendations
+
+def investment_recommendation(risk_level):
+    
+    risk_categories = {"none": "100% bonds (AGG), 0% equities (SPY)", "very low": "80% bonds (AGG), 20% equities (SPY)", "low": "60% bonds (AGG), 40% equities (SPY)", "medium" : "40% bonds (AGG), 60% equities (SPY)", "high": "20% bonds (AGG), 80% equities (SPY)", "very high": "0% bonds (AGG), 100% equities (SPY)"}    
+    return risk_categories[risk_level.lower()]
+
 ### Dialog Actions Helper Functions ###
 def get_slots(intent_request):
     """
@@ -93,6 +115,17 @@ def recommend_portfolio(intent_request):
     source = intent_request["invocationSource"]
 
     if source == "DialogCodeHook":
+        slots = get_slots(intent_request)
+        validation_result = data_validation(age, investment_amount, intent_request)
+        if not validation_result['isValid']:
+            slots[validation_result['violatedSlot']] = None
+            return elicit_slot(
+                intent_request['sessionAttributes'],
+                intent_request['currentIntent']['name'],
+                slots,
+                validation_result['violatedSlot'],
+                validation_result['message'],
+                )
         # Perform basic validation on the supplied input slots.
         # Use the elicitSlot dialog action to re-prompt
         # for the first violation detected.
@@ -107,6 +140,8 @@ def recommend_portfolio(intent_request):
         return delegate(output_session_attributes, get_slots(intent_request))
 
     # Get the initial investment recommendation
+    
+    initial_recommendation = investment_recommendation(risk_level)
 
     ### YOUR FINAL INVESTMENT RECOMMENDATION CODE STARTS HERE ###
 
@@ -139,7 +174,8 @@ def dispatch(intent_request):
     if intent_name == "RecommendPortfolio":
         return recommend_portfolio(intent_request)
 
-    raise Exception("Intent with name " + intent_name + " not supported")
+    raise Exception("Intent with name " + intent_name + " is not supported")
+
 
 
 ### Main Handler ###
